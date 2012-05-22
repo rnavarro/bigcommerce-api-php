@@ -9,7 +9,7 @@ require_once dirname(__FILE__).'/Api/Filter.php';
 class BigCommerce_Api
 {
 
-	static private $api_path = '/api/v2';
+	static private $api_path;
 	static private $store_url;
 	static private $username;
 	static private $api_key;
@@ -41,10 +41,17 @@ class BigCommerce_Api
 			throw new Exception("'api_key' must be provided");
 		}
 
+		// Needed to add this to reset the connection if connecting to a different account
+		// this will effectively reset the username and password in curl
+		if (isset(self::$api_key) && self::$api_key != $settings['api_key'])
+		{
+			self::$connection = FALSE;
+		}
+
 		self::$username  = $settings['username'];
 		self::$api_key 	 = $settings['api_key'];
 		self::$store_url = rtrim($settings['store_url'], '/');
-		self::$api_path  = self::$store_url . self::$api_path;
+		self::$api_path  = self::$store_url . '/api/v2';
 	}
 
 	/**
@@ -328,6 +335,30 @@ class BigCommerce_Api
 	}
 
 	/**
+	 * Returns the default collection of skus.
+	 *
+	 * @param array $filter
+	 * @return mixed array|string list of products or XML string if useXml is true
+	 */
+	public static function getSkus($productId, $filter=false)
+	{
+		$filter = BigCommerce_Api_Filter::create($filter);
+		return self::getCollection('/products/' . $productId . '/skus' . $filter->toQuery(), 'Sku');
+	}
+
+	/**
+	 * Update the given product sku.
+	 *
+	 * @param int $productId product id
+	 * @param int $skuId sku id
+	 * @param mixed $object fields to update
+	 */
+	public static function updateSku($productId, $skuId, $object)
+	{
+		return self::updateResource('/products/' . $productId . '/skus/' . $skuId, $object);
+	}
+
+	/**
 	 * Return the collection of options.
 	 *
 	 * @param array $filter
@@ -392,6 +423,18 @@ class BigCommerce_Api
 	{
 		$filter = BigCommerce_Api_Filter::create($filter);
 		return self::getCollection('/options/values' . $filter->toQuery(), 'OptionValue');
+	}
+
+	/**
+	 * Return the collection of all option values for a given option id.
+	 *
+	 * @param mixed $filter
+	 * @return array
+	 */
+	public static function getOptionValuesByOption($option_id, $filter=false)
+	{
+		$filter = BigCommerce_Api_Filter::create($filter);
+		return self::getCollection('/options/' . $option_id . '/values' . $filter->toQuery(), 'OptionValue');
 	}
 
 	/**
@@ -566,6 +609,16 @@ class BigCommerce_Api
 		return self::deleteResource('/orders/' . $id);
 	}
 
+	/**
+	 * Update the given order.
+	 *
+	 * @param int $id order id
+	 * @param mixed $object
+	 */
+	public static function updateOrder($id, $object)
+	{
+		return self::updateResource('/orders/' . $id, $object);
+	}
 
 	/**
 	 * The list of customers.
